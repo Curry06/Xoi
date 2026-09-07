@@ -8,6 +8,11 @@ Welcome to the **Gluetun Control Center** documentation. This suite of documents
 
 | Document | Description |
 |---|---|
+| **[Current Architecture Baseline](file:///home/vedx/Videos/Gul/docs/CURRENT_ARCHITECTURE.md)** | Technical baseline of Gluetun engine vs custom dashboard, verified symbols, process boundaries, and protocols. |
+| **[Gluetun Integration Boundary](file:///home/vedx/Videos/Gul/docs/GLUETUN_INTEGRATION.md)** | Exact Go interfaces, client adapters, HTTP endpoints, storage sharing, and network isolation between dashboard and engine. |
+| **[Connection Lifecycle Flows](file:///home/vedx/Videos/Gul/docs/CONNECTION_FLOW.md)** | Complete end-to-end call paths for Connect, Disconnect, Reconnect, Server Switching, and NAT-PMP Port Forwarding. |
+| **[UI ↔ Engine Contract](file:///home/vedx/Videos/Gul/docs/UI_ENGINE_CONTRACT.md)** | Specification of application-level data models (`LiveSnapshot`, `Capabilities`, `Profile`), state transitions, locking, and error schemas. |
+| **[Gap Analysis & Roadmap](file:///home/vedx/Videos/Gul/docs/DEVELOPMENT_GAPS.md)** | Inventory of implemented vs partial vs missing features, engine vs application responsibilities, and next development steps. |
 | **[Server Deployment Guide](file:///home/vedx/Videos/Gul/docs/deployment.md)** | Step-by-step production server setup, Docker secrets, provider configuration, SSH tunnels, reverse proxy (Caddy/Nginx), and maintenance. |
 | **[Setup & Quickstart](file:///home/vedx/Videos/Gul/docs/setup.md)** | Step-by-step instructions for running standalone mock mode, local development (Vite + Go), Docker Compose production deployment, and automated test commands. |
 | **[Architecture & Subsystems](file:///home/vedx/Videos/Gul/docs/architecture.md)** | System topology diagram, frontend-backend relationship, State Coordinator, concurrency mutex locks, traffic metrics, and Server-Sent Events (SSE) streaming. |

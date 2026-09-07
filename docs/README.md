@@ -8,6 +8,7 @@ Welcome to the **Gluetun Control Center** documentation. This suite of documents
 
 | Document | Description |
 |---|---|
+| **[Server Deployment Guide](file:///home/vedx/Videos/Gul/docs/deployment.md)** | Step-by-step production server setup, Docker secrets, provider configuration, SSH tunnels, reverse proxy (Caddy/Nginx), and maintenance. |
 | **[Setup & Quickstart](file:///home/vedx/Videos/Gul/docs/setup.md)** | Step-by-step instructions for running standalone mock mode, local development (Vite + Go), Docker Compose production deployment, and automated test commands. |
 | **[Architecture & Subsystems](file:///home/vedx/Videos/Gul/docs/architecture.md)** | System topology diagram, frontend-backend relationship, State Coordinator, concurrency mutex locks, traffic metrics, and Server-Sent Events (SSE) streaming. |
 | **[Safe Management API](file:///home/vedx/Videos/Gul/docs/api.md)** | Full endpoint catalog for `/api/dashboard/*`, request/response JSON schemas, CSRF protection headers, session cookies, and standard error formats. |

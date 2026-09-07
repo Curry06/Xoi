@@ -109,3 +109,22 @@ func (s *Storage) getMergedServersObject(provider string) (serversObject models.
 	}
 	return serversObject
 }
+
+// GetServers returns a copy of all servers for the given provider.
+func (s *Storage) GetServers(provider string) (servers []models.Server) {
+	if provider == providers.Custom {
+		return nil
+	}
+
+	s.mergedMutex.RLock()
+	defer s.mergedMutex.RUnlock()
+
+	serversObject, ok := s.mergedServers.ProviderToServers[provider]
+	if !ok {
+		return nil
+	}
+
+	servers = make([]models.Server, len(serversObject.Servers))
+	copy(servers, serversObject.Servers)
+	return servers
+}

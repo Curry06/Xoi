@@ -1,0 +1,111 @@
+services:
+  # ============================================================================
+  # 1. Gluetun VPN Engine
+  # ============================================================================
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun-engine
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      # Provider Configuration (ProtonVPN WireGuard / OpenVPN example)
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY_FILE=/run/secrets/wireguard_private_key
+      - SERVER_COUNTRIES=India
+      - PORT_FORWARD_ONLY=on
+      - VPN_PORT_FORWARDING=on
+      - VPN_PORT_FORWARDING_PROVIDER=protonvpn
+      # Control Server Configuration
+      - HTTP_CONTROL_SERVER_LOG=off
+      - HTTP_CONTROL_SERVER_ADDRESS=0.0.0.0:8000
+    secrets:
+      - wireguard_private_key
+    networks:
+      - vpn-management
+    ports:
+      # Forwarded port forwarded from VPN to internal service (example port: 8080)
+      - "8080:8080"
+      # IMPORTANT SECURITY REQUIREMENT:
+      # Port 8000 (Gluetun Control Server) is INTENTIONALLY NOT EXPOSED to the host!
+      # It is accessible strictly via the internal 'vpn-management' Docker bridge network.
+    healthcheck:
+      test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ============================================================================
+  # 2. Gluetun Control Center (Dashboard)
+  # ============================================================================
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    image: gluetun-control-center:latest
+    container_name: gluetun-control-center
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    networks:
+      - vpn-management
+    ports:
+      # SECURITY REQUIREMENT: Bound strictly to localhost (127.0.0.1) on host
+      - "127.0.0.1:9090:9090"
+    environment:
+      - DASHBOARD_HTTP_ADDRESS=0.0.0.0:9090
+      - DASHBOARD_AUTH_REQUIRED=true
+      - DASHBOARD_ADMIN_USERNAME=admin
+      - DASHBOARD_ADMIN_PASSWORD_FILE=/run/secrets/dashboard_admin_password
+      - DASHBOARD_DATA_DIR=/data
+      - DASHBOARD_INTERNAL_PORT=8080
+      - GLUETUN_CONTROL_URL=http://gluetun:8000
+      - GLUETUN_MOCK=false
+    secrets:
+      - dashboard_admin_password
+    volumes:
+      - dashboard-data:/data
+    # Hardening: Read-only root filesystem, drop all Linux capabilities
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # SECURITY: Never mount /var/run/docker.sock
+
+  # ============================================================================
+  # 3. Example Application Routed Through Gluetun VPN Tunnel
+  # ============================================================================
+  routed-app:
+    image: alpine:3.21
+    container_name: gluetun-routed-app
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    # Uses the Gluetun container's network namespace (all outbound traffic passes through VPN)
+    network_mode: "service:gluetun"
+    command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+
+networks:
+  vpn-management:
+    name: vpn-management
+    driver: bridge
+    internal: false # allows dashboard to connect to gluetun
+
+volumes:
+  dashboard-data:
+    name: gluetun-dashboard-data
+
+secrets:
+  wireguard_private_key:
+    file: ./secrets/wireguard_private_key.txt
+  dashboard_admin_password:
+    file: ./secrets/dashboard_admin_password.txt

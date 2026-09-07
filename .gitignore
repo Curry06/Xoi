@@ -1,2 +1,19 @@
 scratch.txt
 .DS_Store
+
+# Frontend dependencies and temp build
+web/node_modules/
+web/dist/
+
+# Local data persistence & compiled binaries
+/data/
+/gluetun-dashboard
+
+# Secrets and local credentials
+/secrets/
+*.env
+!.env.example
+
+# Local prompt and agent tooling
+A/
+.agents/

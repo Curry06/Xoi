@@ -8,6 +8,8 @@ import {
   PortForwardingInfo,
   TrafficMetrics,
   APIErrorResponse,
+  TelegramSettings,
+  TelegramSettingsUpdateRequest,
 } from '../types';
 
 class APIClient {
@@ -212,6 +214,23 @@ class APIClient {
   public async logout(): Promise<void> {
     await this.request('/api/dashboard/auth/logout', { method: 'POST' });
     this.csrfToken = null;
+  }
+
+  public async getTelegramSettings(): Promise<TelegramSettings> {
+    return this.request<TelegramSettings>('/api/dashboard/settings/telegram');
+  }
+
+  public async updateTelegramSettings(settings: TelegramSettingsUpdateRequest): Promise<TelegramSettings> {
+    return this.request<TelegramSettings>('/api/dashboard/settings/telegram', {
+      method: 'POST',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  public async sendTelegramTest(): Promise<{ status: string; message: string }> {
+    return this.request<{ status: string; message: string }>('/api/dashboard/settings/telegram/test', {
+      method: 'POST',
+    });
   }
 }
 

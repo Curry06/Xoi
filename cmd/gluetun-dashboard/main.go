@@ -17,6 +17,7 @@ import (
 	"github.com/qdm12/gluetun/internal/dashboard/auth"
 	"github.com/qdm12/gluetun/internal/dashboard/gluetun"
 	"github.com/qdm12/gluetun/internal/dashboard/history"
+	"github.com/qdm12/gluetun/internal/dashboard/notify"
 	"github.com/qdm12/gluetun/internal/dashboard/profiles"
 	"github.com/qdm12/gluetun/internal/dashboard/state"
 	"github.com/qdm12/gluetun/internal/dashboard/web"
@@ -102,6 +103,9 @@ func run(ctx context.Context, logger log.LoggerInterface) error {
 	dataDir := getEnv("DASHBOARD_DATA_DIR", "./data")
 	internalPort := uint16(getEnvInt("DASHBOARD_INTERNAL_PORT", 8080))
 	allowedOriginsRaw := getEnv("DASHBOARD_ALLOWED_ORIGINS", "")
+	telegramEnabled := getEnvBool("TELEGRAM_ENABLED", false)
+	telegramToken := getEnvSecret("TELEGRAM_BOT_TOKEN", "")
+	telegramChatID := getEnv("TELEGRAM_CHAT_ID", "")
 
 	var allowedOrigins []string
 	if allowedOriginsRaw != "" {
@@ -150,13 +154,27 @@ func run(ctx context.Context, logger log.LoggerInterface) error {
 
 	// 4. Initialize Coordinator
 	coordinator := state.NewCoordinator(client, historyStore, profileStore, version, internalPort)
+
+	// 5. Initialize Telegram Notifier (if configured)
+	telegramHTTPClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	telegramNotifier := notify.NewTelegramNotifier(telegramHTTPClient, telegramToken, telegramChatID, telegramEnabled)
+	coordinator.SetTelegramNotifier(telegramNotifier)
+	if telegramNotifier.IsEnabled() {
+		logger.Info("Telegram notifications ENABLED")
+	} else {
+		logger.Info("Telegram notifications configured but inactive (disabled or missing token/chat_id)")
+	}
+
 	coordinator.Start(ctx, 2500*time.Millisecond)
 
-	// 5. Initialize Authenticator
+	// 6. Initialize Authenticator
 	authenticator := auth.NewAuthenticator(adminUsername, adminPassword, authRequired, 24*time.Hour)
 
-	// 6. Build HTTP API and SPA Router
+	// 7. Build HTTP API and SPA Router
 	apiHandler := api.NewAPIHandler(coordinator, authenticator, serverStorage)
+	apiHandler.SetTelegramNotifier(telegramNotifier)
 	apiRouter := api.NewRouter(apiHandler, allowedOrigins)
 
 	spaHandler := web.Handler()

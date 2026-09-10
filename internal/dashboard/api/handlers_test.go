@@ -12,6 +12,7 @@ import (
 	"github.com/qdm12/gluetun/internal/dashboard/auth"
 	"github.com/qdm12/gluetun/internal/dashboard/gluetun"
 	"github.com/qdm12/gluetun/internal/dashboard/history"
+	"github.com/qdm12/gluetun/internal/dashboard/notify"
 	"github.com/qdm12/gluetun/internal/dashboard/profiles"
 	"github.com/qdm12/gluetun/internal/dashboard/state"
 	"github.com/stretchr/testify/assert"
@@ -229,3 +230,66 @@ func Test_API_Auth_And_CSRF_Enforcement(t *testing.T) {
 	router.ServeHTTP(validRec, validReq)
 	assert.Equal(t, http.StatusOK, validRec.Code)
 }
+
+func Test_API_Telegram_Settings_And_Test(t *testing.T) {
+	t.Parallel()
+
+	mockClient := gluetun.NewMockClient(gluetun.ScenarioConnected)
+	historyStore := history.NewStore("")
+	profileStore, err := profiles.NewStore("")
+	require.NoError(t, err)
+
+	coordinator := state.NewCoordinator(mockClient, historyStore, profileStore, "1.0.0", 8080)
+	authenticator := auth.NewAuthenticator("admin", "password123", false, 1*time.Hour)
+
+	mockTelegramServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok": true, "result": {"message_id": 10}}`))
+	}))
+	defer mockTelegramServer.Close()
+
+	notifier := notify.NewTelegramNotifier(mockTelegramServer.Client(), "", "", false)
+	notifier.SetAPIBaseURLForTesting(mockTelegramServer.URL)
+
+	handler := NewAPIHandler(coordinator, authenticator, nil)
+	handler.SetTelegramNotifier(notifier)
+	router := NewRouter(handler, []string{"*"})
+
+	// 1. GET initial settings
+	getReq := httptest.NewRequest(http.MethodGet, "/api/dashboard/settings/telegram", nil)
+	getRec := httptest.NewRecorder()
+	router.ServeHTTP(getRec, getReq)
+	assert.Equal(t, http.StatusOK, getRec.Code)
+
+	var initialSettings TelegramSettingsResponse
+	err = json.Unmarshal(getRec.Body.Bytes(), &initialSettings)
+	require.NoError(t, err)
+	assert.False(t, initialSettings.Enabled)
+	assert.False(t, initialSettings.TokenSet)
+
+	// 2. Update settings
+	updateBody := `{"enabled": true, "bot_token": "123:MY_TOKEN", "chat_id": "-100123456"}`
+	updateReq := httptest.NewRequest(http.MethodPost, "/api/dashboard/settings/telegram", bytes.NewBufferString(updateBody))
+	updateRec := httptest.NewRecorder()
+	router.ServeHTTP(updateRec, updateReq)
+	assert.Equal(t, http.StatusOK, updateRec.Code)
+
+	var updatedSettings TelegramSettingsResponse
+	err = json.Unmarshal(updateRec.Body.Bytes(), &updatedSettings)
+	require.NoError(t, err)
+	assert.True(t, updatedSettings.Enabled)
+	assert.True(t, updatedSettings.TokenSet)
+	assert.Equal(t, "-100123456", updatedSettings.ChatID)
+
+	// 3. Test sending notification
+	testReq := httptest.NewRequest(http.MethodPost, "/api/dashboard/settings/telegram/test", nil)
+	testRec := httptest.NewRecorder()
+	router.ServeHTTP(testRec, testReq)
+	assert.Equal(t, http.StatusOK, testRec.Code)
+
+	var testResponse map[string]string
+	err = json.Unmarshal(testRec.Body.Bytes(), &testResponse)
+	require.NoError(t, err)
+	assert.Equal(t, "success", testResponse["status"])
+}
+

@@ -17,6 +17,7 @@ import (
 	"github.com/qdm12/gluetun/internal/dashboard/auth"
 	"github.com/qdm12/gluetun/internal/dashboard/gluetun"
 	"github.com/qdm12/gluetun/internal/dashboard/history"
+	"github.com/qdm12/gluetun/internal/dashboard/notify"
 	"github.com/qdm12/gluetun/internal/dashboard/profiles"
 	"github.com/qdm12/gluetun/internal/dashboard/state"
 	"github.com/qdm12/gluetun/internal/models"
@@ -41,10 +42,15 @@ type ServerResponse struct {
 }
 
 type APIHandler struct {
-	coordinator   *state.Coordinator
-	authenticator *auth.Authenticator
-	serverStorage *storage.Storage
-	client        gluetun.Client
+	coordinator      *state.Coordinator
+	authenticator    *auth.Authenticator
+	serverStorage    *storage.Storage
+	client           gluetun.Client
+	telegramNotifier *notify.TelegramNotifier
+}
+
+func (h *APIHandler) SetTelegramNotifier(notifier *notify.TelegramNotifier) {
+	h.telegramNotifier = notifier
 }
 
 func NewAPIHandler(
@@ -929,4 +935,74 @@ func generateMockServers() []models.Server {
 			UDP:         true,
 		},
 	}
+}
+
+type TelegramSettingsResponse struct {
+	Enabled  bool   `json:"enabled"`
+	ChatID   string `json:"chat_id"`
+	TokenSet bool   `json:"token_set"`
+}
+
+type TelegramSettingsUpdateRequest struct {
+	Enabled  bool   `json:"enabled"`
+	BotToken string `json:"bot_token"`
+	ChatID   string `json:"chat_id"`
+}
+
+func (h *APIHandler) handleTelegramSettings(writer http.ResponseWriter, request *http.Request) {
+	if h.telegramNotifier == nil {
+		writeError(writer, http.StatusNotImplemented, "NOT_CONFIGURED", "Telegram notifier not available", false)
+		return
+	}
+
+	switch request.Method {
+	case http.MethodGet:
+		currentSettings := h.telegramNotifier.GetSettings()
+		response := TelegramSettingsResponse{
+			Enabled:  currentSettings.Enabled,
+			ChatID:   currentSettings.ChatID,
+			TokenSet: currentSettings.BotToken != "",
+		}
+		writeJSON(writer, http.StatusOK, response)
+	case http.MethodPost:
+		var updateRequest TelegramSettingsUpdateRequest
+		err := json.NewDecoder(request.Body).Decode(&updateRequest)
+		if err != nil {
+			writeError(writer, http.StatusBadRequest, "INVALID_JSON", "Failed to parse JSON body", false)
+			return
+		}
+		h.telegramNotifier.UpdateSettings(updateRequest.Enabled, updateRequest.BotToken, updateRequest.ChatID)
+		currentSettings := h.telegramNotifier.GetSettings()
+		response := TelegramSettingsResponse{
+			Enabled:  currentSettings.Enabled,
+			ChatID:   currentSettings.ChatID,
+			TokenSet: currentSettings.BotToken != "",
+		}
+		writeJSON(writer, http.StatusOK, response)
+	default:
+		writeError(writer, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method not allowed", false)
+	}
+}
+
+func (h *APIHandler) handleTelegramTest(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
+		writeError(writer, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method not allowed", false)
+		return
+	}
+
+	if h.telegramNotifier == nil {
+		writeError(writer, http.StatusNotImplemented, "NOT_CONFIGURED", "Telegram notifier not available", false)
+		return
+	}
+
+	err := h.telegramNotifier.SendTest(request.Context())
+	if err != nil {
+		writeError(writer, http.StatusBadRequest, "TELEGRAM_TEST_FAILED", err.Error(), false)
+		return
+	}
+
+	writeJSON(writer, http.StatusOK, map[string]string{
+		"status":  "success",
+		"message": "Test message sent to Telegram successfully",
+	})
 }

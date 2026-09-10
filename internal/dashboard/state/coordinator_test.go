@@ -98,3 +98,62 @@ func Test_Coordinator_SSE_Broadcasting(t *testing.T) {
 		t.Fatal("timed out waiting for broadcast SSE snapshot")
 	}
 }
+
+type mockTelegramNotifier struct {
+	enabled      bool
+	updatesSent  chan string
+	receivedPort chan uint16
+}
+
+func (m *mockTelegramNotifier) IsEnabled() bool {
+	return m.enabled
+}
+
+func (m *mockTelegramNotifier) SendUpdate(_ context.Context, publicIP, _ string, port uint16) error {
+	m.updatesSent <- publicIP
+	m.receivedPort <- port
+	return nil
+}
+
+func Test_Coordinator_TelegramNotification(t *testing.T) {
+	t.Parallel()
+
+	mockClient := gluetun.NewMockClient(gluetun.ScenarioConnected)
+	historyStore := history.NewStore("")
+	profileStore, _ := profiles.NewStore("")
+
+	coordinator := NewCoordinator(mockClient, historyStore, profileStore, "1.0.0", 8080)
+	notifier := &mockTelegramNotifier{
+		enabled:      true,
+		updatesSent:  make(chan string, 10),
+		receivedPort: make(chan uint16, 10),
+	}
+	coordinator.SetTelegramNotifier(notifier)
+
+	ctx := context.Background()
+	_ = coordinator.Refresh(ctx)
+
+	select {
+	case ip := <-notifier.updatesSent:
+		assert.NotEmpty(t, ip)
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected telegram update was not sent")
+	}
+
+	select {
+	case port := <-notifier.receivedPort:
+		assert.Equal(t, uint16(45823), port)
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected telegram port was not sent")
+	}
+
+	// Refresh again with no IP/port change - should NOT send duplicate
+	_ = coordinator.Refresh(ctx)
+	select {
+	case duplicateIP := <-notifier.updatesSent:
+		t.Fatalf("unexpected duplicate notification sent for IP %s", duplicateIP)
+	case <-time.After(200 * time.Millisecond):
+		// Success: no duplicate sent
+	}
+}
+

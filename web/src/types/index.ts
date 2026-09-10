@@ -161,3 +161,15 @@ export interface APIErrorResponse {
     request_id: string;
   };
 }
+
+export interface TelegramSettings {
+  enabled: boolean;
+  chat_id: string;
+  token_set: boolean;
+}
+
+export interface TelegramSettingsUpdateRequest {
+  enabled: boolean;
+  bot_token?: string;
+  chat_id: string;
+}

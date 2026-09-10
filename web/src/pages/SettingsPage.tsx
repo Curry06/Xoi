@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield,
   Sliders,
@@ -6,6 +6,8 @@ import {
   XCircle,
   Beaker,
   Save,
+  Bell,
+  Send,
 } from 'lucide-react';
 import { LiveSnapshot } from '../types';
 import { apiClient } from '../api/client';
@@ -25,7 +27,61 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ snapshot, onRefresh 
   const [selectedScenario, setSelectedScenario] = useState(snapshot.mock_scenario || 'connected');
   const [isSwitchingScenario, setIsSwitchingScenario] = useState(false);
 
+  // Telegram Notifications State
+  const [telegramEnabled, setTelegramEnabled] = useState(false);
+  const [telegramToken, setTelegramToken] = useState('');
+  const [telegramChatID, setTelegramChatID] = useState('');
+  const [telegramTokenSet, setTelegramTokenSet] = useState(false);
+  const [isSavingTelegram, setIsSavingTelegram] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+
+  useEffect(() => {
+    apiClient
+      .getTelegramSettings()
+      .then((settings) => {
+        setTelegramEnabled(settings.enabled);
+        setTelegramChatID(settings.chat_id || '');
+        setTelegramTokenSet(settings.token_set);
+      })
+      .catch((err) => {
+        console.error('Failed loading telegram settings', err);
+      });
+  }, []);
+
   const capabilities = snapshot.capabilities;
+
+  const handleSaveTelegram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsSavingTelegram(true);
+      const updated = await apiClient.updateTelegramSettings({
+        enabled: telegramEnabled,
+        bot_token: telegramToken || undefined,
+        chat_id: telegramChatID,
+      });
+      setTelegramEnabled(updated.enabled);
+      setTelegramChatID(updated.chat_id);
+      setTelegramTokenSet(updated.token_set);
+      setTelegramToken('');
+      showToast('Telegram settings saved successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to save Telegram settings', 'error');
+    } finally {
+      setIsSavingTelegram(false);
+    }
+  };
+
+  const handleSendTelegramTest = async () => {
+    try {
+      setIsSendingTest(true);
+      const res = await apiClient.sendTelegramTest();
+      showToast(res.message || 'Test message sent to Telegram successfully!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed sending Telegram test message', 'error');
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
 
   const handleSavePreferences = (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,6 +301,112 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ snapshot, onRefresh 
               <strong style={{ color: 'var(--color-success)' }}>Disabled (Safe)</strong>
             </div>
           </div>
+        </div>
+
+        {/* Telegram Bot Notifications Card */}
+        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Bell size={18} color="var(--accent-indigo)" />
+              Telegram Bot Notifications
+            </h3>
+            {telegramEnabled && telegramTokenSet && telegramChatID ? (
+              <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>Active</span>
+            ) : (
+              <span className="badge badge-muted" style={{ fontSize: '0.75rem' }}>Inactive</span>
+            )}
+          </div>
+
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Automatically notify your Telegram group or channel whenever the ProtonVPN public IP changes or a new port is allocated via NAT-PMP.
+          </p>
+
+          <form onSubmit={handleSaveTelegram} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <input
+                type="checkbox"
+                id="telegram-enabled"
+                checked={telegramEnabled}
+                onChange={(e) => setTelegramEnabled(e.target.checked)}
+                style={{ width: '1.1rem', height: '1.1rem', cursor: 'pointer', accentColor: 'var(--accent-indigo)' }}
+              />
+              <label htmlFor="telegram-enabled" style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
+                Enable Automatic Telegram Notifications
+              </label>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', fontWeight: 600 }}>
+                Telegram Bot Token
+              </label>
+              <input
+                type="password"
+                value={telegramToken}
+                onChange={(e) => setTelegramToken(e.target.value)}
+                placeholder={telegramTokenSet ? '(Configured — leave blank to keep current)' : 'e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ'}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.85rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-subtle)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.875rem',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              />
+              {telegramTokenSet && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', marginTop: '0.25rem' }}>
+                  ✓ Bot token is securely configured
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', fontWeight: 600 }}>
+                Telegram Chat ID
+              </label>
+              <input
+                type="text"
+                value={telegramChatID}
+                onChange={(e) => setTelegramChatID(e.target.value)}
+                placeholder="e.g. -1001234567890 or @your_channel"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.85rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-subtle)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.875rem',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isSavingTelegram}
+                style={{ flex: 1 }}
+              >
+                <Save size={16} />
+                {isSavingTelegram ? 'Saving...' : 'Save Settings'}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleSendTelegramTest}
+                disabled={isSendingTest || (!telegramTokenSet && !telegramToken) || !telegramChatID}
+                title={(!telegramTokenSet && !telegramToken) || !telegramChatID ? 'Configure token and chat ID first' : 'Send a test message now'}
+              >
+                <Send size={16} />
+                {isSendingTest ? 'Sending...' : 'Test Send'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 

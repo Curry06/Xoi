@@ -54,6 +54,10 @@ func NewRouter(handler *APIHandler, allowedOrigins []string) http.Handler {
 	// Mock scenario switcher
 	mux.HandleFunc("/api/dashboard/mock/scenario", handler.handleMockScenario)
 
+	// Settings & notification routes
+	mux.HandleFunc("/api/dashboard/settings/telegram", handler.handleTelegramSettings)
+	mux.HandleFunc("/api/dashboard/settings/telegram/test", handler.handleTelegramTest)
+
 	// Wrap in middleware chain
 	var finalHandler http.Handler = mux
 	finalHandler = authMiddleware(handler.authenticator, finalHandler)

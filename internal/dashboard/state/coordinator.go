@@ -13,6 +13,11 @@ import (
 	"github.com/qdm12/gluetun/internal/models"
 )
 
+type TelegramNotifier interface {
+	IsEnabled() bool
+	SendUpdate(ctx context.Context, publicIP, country string, port uint16) error
+}
+
 type Coordinator struct {
 	client           gluetun.Client
 	historyStore     *history.Store
@@ -27,12 +32,21 @@ type Coordinator struct {
 	reconnectionCount   uint32
 	lastKnownIP         string
 	lastKnownPort       uint16
+	telegramNotifier    TelegramNotifier
+	lastNotifiedIP      string
+	lastNotifiedPort    uint16
 	operationMutex      sync.Mutex
 	operationInProgress bool
 	currentOperation    string
 
 	subscribersMutex sync.Mutex
 	subscribers      map[chan LiveSnapshot]struct{}
+}
+
+func (c *Coordinator) SetTelegramNotifier(notifier TelegramNotifier) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.telegramNotifier = notifier
 }
 
 func NewCoordinator(
@@ -303,7 +317,26 @@ func (c *Coordinator) Refresh(ctx context.Context) LiveSnapshot {
 		c.lastKnownPort = port
 	}
 
-	// 11. Traffic Sample
+	// 11. Telegram Notification on IP or Port Change
+	if currentIP.IP.IsValid() && (currentIP.IP.String() != c.lastNotifiedIP || (port > 0 && port != c.lastNotifiedPort)) {
+		c.lastNotifiedIP = currentIP.IP.String()
+		if port > 0 {
+			c.lastNotifiedPort = port
+		}
+		if c.telegramNotifier != nil && c.telegramNotifier.IsEnabled() {
+			notifIP := currentIP.IP.String()
+			notifCountry := currentIP.Country
+			notifPort := port
+			notifier := c.telegramNotifier
+			go func() {
+				notifyCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				_ = notifier.SendUpdate(notifyCtx, notifIP, notifCountry, notifPort)
+			}()
+		}
+	}
+
+	// 12. Traffic Sample
 	isConnected := state == StateConnected || state == StateDegraded
 	snapshot.Traffic = c.trafficMonitor.Sample(isConnected)
 

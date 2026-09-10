@@ -21,9 +21,14 @@ services:
       - PORT_FORWARD_ONLY=${PORT_FORWARD_ONLY:-on}
       - VPN_PORT_FORWARDING=${VPN_PORT_FORWARDING:-on}
       - VPN_PORT_FORWARDING_PROVIDER=${VPN_PORT_FORWARDING_PROVIDER:-protonvpn}
+      - OPENVPN_MSSFIX=${OPENVPN_MSSFIX:-1200}
+      - DOT=${DOT:-off}
+      - DNS_UPSTREAM_RESOLVER_TYPE=${DNS_UPSTREAM_RESOLVER_TYPE:-plain}
+      - DNS_PLAINTEXT_ADDRESS=${DNS_PLAINTEXT_ADDRESS:-1.1.1.1}
       # Control Server Configuration
       - HTTP_CONTROL_SERVER_LOG=${HTTP_CONTROL_SERVER_LOG:-off}
       - HTTP_CONTROL_SERVER_ADDRESS=0.0.0.0:8000
+      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"none"}
     networks:
       - vpn-management
     ports:
@@ -65,6 +70,9 @@ services:
       - DASHBOARD_INTERNAL_PORT=${DASHBOARD_INTERNAL_PORT:-8080}
       - GLUETUN_CONTROL_URL=http://gluetun:8000
       - GLUETUN_MOCK=${GLUETUN_MOCK:-false}
+      - TELEGRAM_ENABLED=${TELEGRAM_ENABLED:-false}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     volumes:
       - dashboard-data:/data
     # Hardening: Read-only root filesystem, drop all Linux capabilities

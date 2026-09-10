@@ -10,6 +10,12 @@ import {
   APIErrorResponse,
   TelegramSettings,
   TelegramSettingsUpdateRequest,
+  ProxyRoute,
+  PublicEndpoint,
+  RouteMetrics,
+  ProxyStatus,
+  CreateRouteRequest,
+  TargetProbeResult,
 } from '../types';
 
 class APIClient {
@@ -231,6 +237,66 @@ class APIClient {
     return this.request<{ status: string; message: string }>('/api/dashboard/settings/telegram/test', {
       method: 'POST',
     });
+  }
+
+  // Reverse Proxy Application Routes
+  public async getProxyRoutes(): Promise<ProxyRoute[]> {
+    return this.request<ProxyRoute[]>('/api/dashboard/proxy/routes');
+  }
+
+  public async createProxyRoute(data: CreateRouteRequest): Promise<ProxyRoute> {
+    return this.request<ProxyRoute>('/api/dashboard/proxy/routes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getProxyRouteDetails(id: string): Promise<{ route: ProxyRoute; metrics: RouteMetrics }> {
+    return this.request<{ route: ProxyRoute; metrics: RouteMetrics }>(`/api/dashboard/proxy/routes/${id}`);
+  }
+
+  public async updateProxyRoute(id: string, data: CreateRouteRequest): Promise<ProxyRoute> {
+    return this.request<ProxyRoute>(`/api/dashboard/proxy/routes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async deleteProxyRoute(id: string): Promise<{ status: string; id: string }> {
+    return this.request<{ status: string; id: string }>(`/api/dashboard/proxy/routes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async enableProxyRoute(id: string): Promise<ProxyRoute> {
+    return this.request<ProxyRoute>(`/api/dashboard/proxy/routes/${id}/enable`, {
+      method: 'POST',
+    });
+  }
+
+  public async disableProxyRoute(id: string): Promise<ProxyRoute> {
+    return this.request<ProxyRoute>(`/api/dashboard/proxy/routes/${id}/disable`, {
+      method: 'POST',
+    });
+  }
+
+  public async testProxyTarget(target_host: string, target_port: number): Promise<TargetProbeResult> {
+    return this.request<TargetProbeResult>('/api/dashboard/proxy/routes/test-target', {
+      method: 'POST',
+      body: JSON.stringify({ target_host, target_port }),
+    });
+  }
+
+  public async getProxyStatus(): Promise<ProxyStatus> {
+    return this.request<ProxyStatus>('/api/dashboard/proxy/status');
+  }
+
+  public async getProxyMetrics(): Promise<Record<string, RouteMetrics>> {
+    return this.request<Record<string, RouteMetrics>>('/api/dashboard/proxy/metrics');
+  }
+
+  public async getPublicEndpoint(): Promise<PublicEndpoint> {
+    return this.request<PublicEndpoint>('/api/dashboard/public-endpoint');
   }
 }
 

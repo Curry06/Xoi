@@ -11,11 +11,16 @@ import (
 	"github.com/qdm12/gluetun/internal/dashboard/history"
 	"github.com/qdm12/gluetun/internal/dashboard/profiles"
 	"github.com/qdm12/gluetun/internal/models"
+	"github.com/qdm12/gluetun/internal/proxy"
 )
 
 type TelegramNotifier interface {
 	IsEnabled() bool
 	SendUpdate(ctx context.Context, publicIP, country string, port uint16) error
+}
+
+type ProxyEndpointUpdater interface {
+	UpdatePublicEndpoint(endpoint proxy.PublicEndpoint)
 }
 
 type Coordinator struct {
@@ -35,6 +40,7 @@ type Coordinator struct {
 	telegramNotifier    TelegramNotifier
 	lastNotifiedIP      string
 	lastNotifiedPort    uint16
+	proxyUpdater        ProxyEndpointUpdater
 	operationMutex      sync.Mutex
 	operationInProgress bool
 	currentOperation    string
@@ -47,6 +53,12 @@ func (c *Coordinator) SetTelegramNotifier(notifier TelegramNotifier) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.telegramNotifier = notifier
+}
+
+func (c *Coordinator) SetProxyUpdater(updater ProxyEndpointUpdater) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.proxyUpdater = updater
 }
 
 func NewCoordinator(
@@ -156,6 +168,7 @@ func (c *Coordinator) Refresh(ctx context.Context) LiveSnapshot {
 	if err != nil {
 		snapshot.EngineOnline = false
 		snapshot.State = StateError
+		c.updateProxyEndpoint(proxy.PublicEndpoint{Status: "vpn_offline"})
 		c.lastSnapshot = snapshot
 		c.broadcast(snapshot)
 		return snapshot
@@ -167,6 +180,7 @@ func (c *Coordinator) Refresh(ctx context.Context) LiveSnapshot {
 	vpnStatus, err := c.client.GetVPNStatus(ctx)
 	if err != nil {
 		snapshot.State = StateError
+		c.updateProxyEndpoint(proxy.PublicEndpoint{Status: "vpn_offline"})
 		c.lastSnapshot = snapshot
 		c.broadcast(snapshot)
 		return snapshot
@@ -336,13 +350,43 @@ func (c *Coordinator) Refresh(ctx context.Context) LiveSnapshot {
 		}
 	}
 
-	// 12. Traffic Sample
+	// 12. Update Reverse Proxy Public Endpoint
+	c.updateProxyEndpoint(proxy.PublicEndpoint{
+		PublicIP:      currentIP.IP.String(),
+		ForwardedPort: port,
+		Protocol:      snapshot.Protocol,
+		Status:        endpointStatus(state, port),
+	})
+
+	// 13. Traffic Sample
 	isConnected := state == StateConnected || state == StateDegraded
 	snapshot.Traffic = c.trafficMonitor.Sample(isConnected)
 
 	c.lastSnapshot = snapshot
 	c.broadcast(snapshot)
 	return snapshot
+}
+
+func (c *Coordinator) updateProxyEndpoint(endpoint proxy.PublicEndpoint) {
+	if c.proxyUpdater == nil {
+		return
+	}
+	endpoint.InternalPort = c.internalAppPort
+	c.proxyUpdater.UpdatePublicEndpoint(endpoint)
+}
+
+func endpointStatus(state ConnectionState, port uint16) string {
+	switch state {
+	case StateConnected, StateDegraded:
+		if port > 0 {
+			return "active"
+		}
+		return "pending"
+	case StateConnecting, StateReconnecting, StateDisconnecting:
+		return "pending"
+	default:
+		return "vpn_offline"
+	}
 }
 
 func (c *Coordinator) GetSnapshot() LiveSnapshot {

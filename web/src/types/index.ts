@@ -173,3 +173,84 @@ export interface TelegramSettingsUpdateRequest {
   bot_token?: string;
   chat_id: string;
 }
+
+export type RoutingType = 'domain' | 'path';
+export type RouteStatus =
+  | 'ACTIVE'
+  | 'DISABLED'
+  | 'UNHEALTHY'
+  | 'CONFIG_ERROR'
+  | 'TARGET_UNREACHABLE'
+  | 'VPN_OFFLINE'
+  | 'PUBLIC_ENDPOINT_UNAVAILABLE';
+
+export interface ProxyRoute {
+  id: string;
+  name: string;
+  routing_type: RoutingType;
+  domain: string;
+  path: string;
+  protocol: string;
+  target_host: string;
+  target_port: number;
+  enabled: boolean;
+  websocket: boolean;
+  tls: boolean;
+  health_check: boolean;
+  status: RouteStatus;
+  response_time_ms: number;
+  last_health_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicEndpoint {
+  public_ip: string;
+  forwarded_port: number;
+  internal_port: number;
+  protocol: string;
+  status: string;
+  updated_at: string;
+}
+
+export interface RouteMetrics {
+  route_id: string;
+  total_requests: number;
+  active_connections: number;
+  bytes_received: number;
+  bytes_sent: number;
+  average_latency_ms: number;
+  error_count: number;
+  last_sampled_at: string;
+}
+
+export interface ProxyStatus {
+  engine_running: boolean;
+  engine_type: string;
+  routes_count: number;
+  active_routes: number;
+  public_endpoint: PublicEndpoint;
+  last_reload_error?: string;
+  last_reloaded_at: string;
+}
+
+export interface CreateRouteRequest {
+  name: string;
+  routing_type: RoutingType;
+  domain?: string;
+  path?: string;
+  protocol: string;
+  target_host: string;
+  target_port: number;
+  enabled?: boolean;
+  websocket?: boolean;
+  tls?: boolean;
+  health_check?: boolean;
+}
+
+export interface TargetProbeResult {
+  reachable: boolean;
+  latency_ms: number;
+  status_code: number;
+  error?: string;
+}

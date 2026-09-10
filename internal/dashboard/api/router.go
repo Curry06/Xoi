@@ -58,6 +58,13 @@ func NewRouter(handler *APIHandler, allowedOrigins []string) http.Handler {
 	mux.HandleFunc("/api/dashboard/settings/telegram", handler.handleTelegramSettings)
 	mux.HandleFunc("/api/dashboard/settings/telegram/test", handler.handleTelegramTest)
 
+	// Reverse proxy application routes
+	mux.HandleFunc("/api/dashboard/proxy/routes", handler.handleProxyRoutes)
+	mux.HandleFunc("/api/dashboard/proxy/routes/", handler.handleProxyRouteSubpath)
+	mux.HandleFunc("/api/dashboard/proxy/status", handler.handleProxyStatus)
+	mux.HandleFunc("/api/dashboard/proxy/metrics", handler.handleProxyMetrics)
+	mux.HandleFunc("/api/dashboard/public-endpoint", handler.handlePublicEndpoint)
+
 	// Wrap in middleware chain
 	var finalHandler http.Handler = mux
 	finalHandler = authMiddleware(handler.authenticator, finalHandler)

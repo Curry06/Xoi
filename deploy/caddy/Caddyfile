@@ -1,0 +1,8 @@
+{
+	admin unix//run/caddy/admin.sock|0600
+	auto_https off
+}
+
+http://:8080 {
+	respond "Proxy route configuration is not ready" 503
+}

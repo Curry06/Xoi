@@ -21,6 +21,7 @@ import (
 	"github.com/qdm12/gluetun/internal/dashboard/profiles"
 	"github.com/qdm12/gluetun/internal/dashboard/state"
 	"github.com/qdm12/gluetun/internal/models"
+	"github.com/qdm12/gluetun/internal/proxy"
 	"github.com/qdm12/gluetun/internal/storage"
 )
 
@@ -47,10 +48,15 @@ type APIHandler struct {
 	serverStorage    *storage.Storage
 	client           gluetun.Client
 	telegramNotifier *notify.TelegramNotifier
+	proxyManager     *proxy.Manager
 }
 
 func (h *APIHandler) SetTelegramNotifier(notifier *notify.TelegramNotifier) {
 	h.telegramNotifier = notifier
+}
+
+func (h *APIHandler) SetProxyManager(manager *proxy.Manager) {
+	h.proxyManager = manager
 }
 
 func NewAPIHandler(

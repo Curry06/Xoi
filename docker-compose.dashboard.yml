@@ -21,6 +21,7 @@ services:
       - PORT_FORWARD_ONLY=${PORT_FORWARD_ONLY:-on}
       - VPN_PORT_FORWARDING=${VPN_PORT_FORWARDING:-on}
       - VPN_PORT_FORWARDING_PROVIDER=${VPN_PORT_FORWARDING_PROVIDER:-protonvpn}
+      - VPN_PORT_FORWARDING_LISTENING_PORTS=8080
       - OPENVPN_MSSFIX=${OPENVPN_MSSFIX:-1200}
       - DOT=${DOT:-off}
       - DNS_UPSTREAM_RESOLVER_TYPE=${DNS_UPSTREAM_RESOLVER_TYPE:-plain}
@@ -31,12 +32,8 @@ services:
       - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"none"}
     networks:
       - vpn-management
-    ports:
-      # Forwarded port forwarded from VPN to internal service (example port: 8080)
-      - "8080:8080"
-      # IMPORTANT SECURITY REQUIREMENT:
-      # Port 8000 (Gluetun Control Server) is INTENTIONALLY NOT EXPOSED to the host!
-      # It is accessible strictly via the internal 'vpn-management' Docker bridge network.
+    # Port 8000 is intentionally not exposed to the host. Proton's assigned
+    # port is redirected to the namespace-local Caddy listener by Gluetun.
     healthcheck:
       test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
       interval: 15s
@@ -69,12 +66,18 @@ services:
       - DASHBOARD_DATA_DIR=/data
       - DASHBOARD_INTERNAL_PORT=${DASHBOARD_INTERNAL_PORT:-8080}
       - GLUETUN_CONTROL_URL=http://gluetun:8000
+      - CADDY_ADMIN_URL=unix:///run/caddy/admin.sock
+      - CADDY_INGRESS_URL=http://gluetun:8080
       - GLUETUN_MOCK=${GLUETUN_MOCK:-false}
+      - DASHBOARD_PROXY_ALLOWED_TARGET_HOSTS=${DASHBOARD_PROXY_ALLOWED_TARGET_HOSTS:-}
+      - DASHBOARD_PROXY_DENIED_TARGET_HOSTS=${DASHBOARD_PROXY_DENIED_TARGET_HOSTS:-}
+      - DASHBOARD_PROXY_RESERVED_TARGET_PORTS=${DASHBOARD_PROXY_RESERVED_TARGET_PORTS:-}
       - TELEGRAM_ENABLED=${TELEGRAM_ENABLED:-false}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     volumes:
       - dashboard-data:/data
+      - caddy-admin:/run/caddy
     # Hardening: Read-only root filesystem, drop all Linux capabilities
     read_only: true
     tmpfs:
@@ -85,7 +88,40 @@ services:
       - no-new-privileges:true
 
   # ============================================================================
-  # 3. Example Application Routed Through Gluetun VPN Tunnel
+  # 3. Dynamic Reverse Proxy Engine (Caddy)
+  # ============================================================================
+  caddy-admin-init:
+    image: alpine:3.21
+    container_name: gluetun-caddy-admin-init
+    restart: "no"
+    command: ["/bin/sh", "-ec", "mkdir -p /run/caddy /data /config && chown -R 1000:1000 /run/caddy /data /config && chmod 0700 /run/caddy"]
+    volumes:
+      - caddy-admin:/run/caddy
+      - caddy-data:/data
+      - caddy-config:/config
+
+  caddy:
+    image: caddy:2.9-alpine
+    container_name: gluetun-reverse-proxy
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_started
+      caddy-admin-init:
+        condition: service_completed_successfully
+    user: "1000:1000"
+    # Runs directly inside Gluetun's network namespace:
+    # Receives redirected VPN traffic on port 8080 and proxies to local apps (:3001, :3002, etc.)
+    network_mode: "service:gluetun"
+    command: ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+      - caddy-admin:/run/caddy
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+
+  # ============================================================================
+  # 4. Example Application Routed Through Gluetun VPN Tunnel
   # ============================================================================
   routed-app:
     image: alpine:3.21
@@ -106,3 +142,9 @@ networks:
 volumes:
   dashboard-data:
     name: gluetun-dashboard-data
+  caddy-data:
+    name: gluetun-caddy-data
+  caddy-config:
+    name: gluetun-caddy-config
+  caddy-admin:
+    name: gluetun-caddy-admin

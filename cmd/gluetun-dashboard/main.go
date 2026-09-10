@@ -21,6 +21,7 @@ import (
 	"github.com/qdm12/gluetun/internal/dashboard/profiles"
 	"github.com/qdm12/gluetun/internal/dashboard/state"
 	"github.com/qdm12/gluetun/internal/dashboard/web"
+	"github.com/qdm12/gluetun/internal/proxy"
 	"github.com/qdm12/gluetun/internal/storage"
 	"github.com/qdm12/gosplash"
 	"github.com/qdm12/log"
@@ -97,7 +98,7 @@ func run(ctx context.Context, logger log.LoggerInterface) error {
 	gluetunAPIKey := getEnvSecret("GLUETUN_CONTROL_API_KEY", "")
 	isMock := getEnvBool("GLUETUN_MOCK", false)
 	listenAddress := getEnv("DASHBOARD_HTTP_ADDRESS", "127.0.0.1:9090")
-	authRequired := getEnvBool("DASHBOARD_AUTH_REQUIRED", false)
+	authRequired := getEnvBool("DASHBOARD_AUTH_REQUIRED", true)
 	adminUsername := getEnv("DASHBOARD_ADMIN_USERNAME", "admin")
 	adminPassword := getEnvSecret("DASHBOARD_ADMIN_PASSWORD", "admin")
 	dataDir := getEnv("DASHBOARD_DATA_DIR", "./data")
@@ -106,6 +107,11 @@ func run(ctx context.Context, logger log.LoggerInterface) error {
 	telegramEnabled := getEnvBool("TELEGRAM_ENABLED", false)
 	telegramToken := getEnvSecret("TELEGRAM_BOT_TOKEN", "")
 	telegramChatID := getEnv("TELEGRAM_CHAT_ID", "")
+	caddyAdminURL := getEnv("CADDY_ADMIN_URL", "unix:///run/caddy/admin.sock")
+	caddyIngressURL := getEnv("CADDY_INGRESS_URL", "http://gluetun:8080")
+	proxyAllowedTargetHosts := getEnvStrings("DASHBOARD_PROXY_ALLOWED_TARGET_HOSTS")
+	proxyDeniedTargetHosts := getEnvStrings("DASHBOARD_PROXY_DENIED_TARGET_HOSTS")
+	proxyReservedTargetPorts := getEnvUint16s("DASHBOARD_PROXY_RESERVED_TARGET_PORTS")
 
 	var allowedOrigins []string
 	if allowedOriginsRaw != "" {
@@ -145,15 +151,38 @@ func run(ctx context.Context, logger log.LoggerInterface) error {
 	// 3. Initialize Stores
 	historyPath := filepath.Join(dataDir, "history.json")
 	profilesPath := filepath.Join(dataDir, "profiles.json")
+	routesPath := filepath.Join(dataDir, "proxy_routes.json")
 
 	historyStore := history.NewStore(historyPath)
 	profileStore, err := profiles.NewStore(profilesPath)
 	if err != nil {
 		return fmt.Errorf("initializing profile store: %w", err)
 	}
+	proxyStore, err := proxy.NewStore(routesPath)
+	if err != nil {
+		return fmt.Errorf("initializing proxy route store: %w", err)
+	}
+
+	var proxyProvider proxy.ProxyProvider
+	if isMock {
+		proxyProvider = proxy.NewMockProvider(internalPort)
+	} else {
+		proxyProvider = proxy.NewCaddyProvider(caddyAdminURL, internalPort)
+	}
+
+	healthChecker := proxy.NewTargetHealthChecker(3 * time.Second)
+	healthChecker.SetIngressURL(caddyIngressURL)
+	proxyManager := proxy.NewManager(proxyStore, proxyProvider, healthChecker, internalPort)
+	proxyManager.SetTargetPolicy(proxy.TargetPolicy{
+		AllowedHosts:  proxyAllowedTargetHosts,
+		DeniedHosts:   proxyDeniedTargetHosts,
+		ReservedPorts: proxyReservedTargetPorts,
+	})
+	proxyManager.Start(ctx, 15*time.Second)
 
 	// 4. Initialize Coordinator
 	coordinator := state.NewCoordinator(client, historyStore, profileStore, version, internalPort)
+	coordinator.SetProxyUpdater(proxyManager)
 
 	// 5. Initialize Telegram Notifier (if configured)
 	telegramHTTPClient := &http.Client{
@@ -175,6 +204,7 @@ func run(ctx context.Context, logger log.LoggerInterface) error {
 	// 7. Build HTTP API and SPA Router
 	apiHandler := api.NewAPIHandler(coordinator, authenticator, serverStorage)
 	apiHandler.SetTelegramNotifier(telegramNotifier)
+	apiHandler.SetProxyManager(proxyManager)
 	apiRouter := api.NewRouter(apiHandler, allowedOrigins)
 
 	spaHandler := web.Handler()
@@ -251,4 +281,34 @@ func getEnvInt(key string, defaultValue int) int {
 		return defaultValue
 	}
 	return parsed
+}
+
+func getEnvStrings(key string) []string {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return nil
+	}
+
+	values := strings.Split(value, ",")
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func getEnvUint16s(key string) []uint16 {
+	values := getEnvStrings(key)
+	result := make([]uint16, 0, len(values))
+	for _, value := range values {
+		parsed, err := strconv.ParseUint(value, 10, 16)
+		if err != nil || parsed == 0 {
+			continue
+		}
+		result = append(result, uint16(parsed))
+	}
+	return result
 }

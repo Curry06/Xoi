@@ -8,6 +8,7 @@ import (
 	"github.com/qdm12/gluetun/internal/dashboard/gluetun"
 	"github.com/qdm12/gluetun/internal/dashboard/history"
 	"github.com/qdm12/gluetun/internal/dashboard/profiles"
+	"github.com/qdm12/gluetun/internal/proxy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,6 +65,36 @@ func Test_Coordinator_SnapshotAndTransitions(t *testing.T) {
 	// Verify events were recorded
 	events := historyStore.ListEvents(history.Filter{})
 	assert.NotEmpty(t, events)
+}
+
+type mockProxyEndpointUpdater struct {
+	endpoint proxy.PublicEndpoint
+}
+
+func (updater *mockProxyEndpointUpdater) UpdatePublicEndpoint(endpoint proxy.PublicEndpoint) {
+	updater.endpoint = endpoint
+}
+
+func Test_Coordinator_ProxyEndpointState(t *testing.T) {
+	t.Parallel()
+
+	mockClient := gluetun.NewMockClient(gluetun.ScenarioConnected)
+	historyStore := history.NewStore("")
+	profileStore, err := profiles.NewStore("")
+	require.NoError(t, err)
+	coordinator := NewCoordinator(mockClient, historyStore, profileStore, "1.0.0", 8080)
+	updater := &mockProxyEndpointUpdater{}
+	coordinator.SetProxyUpdater(updater)
+
+	coordinator.Refresh(context.Background())
+	assert.Equal(t, "active", updater.endpoint.Status)
+	assert.Equal(t, "185.156.175.42", updater.endpoint.PublicIP)
+	assert.Equal(t, uint16(45823), updater.endpoint.ForwardedPort)
+
+	mockClient.SetScenario(gluetun.ScenarioDisconnected)
+	coordinator.Refresh(context.Background())
+	assert.Equal(t, "vpn_offline", updater.endpoint.Status)
+	assert.Zero(t, updater.endpoint.ForwardedPort)
 }
 
 func Test_Coordinator_SSE_Broadcasting(t *testing.T) {
@@ -156,4 +187,3 @@ func Test_Coordinator_TelegramNotification(t *testing.T) {
 		// Success: no duplicate sent
 	}
 }
-

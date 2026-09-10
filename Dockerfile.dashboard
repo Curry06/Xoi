@@ -16,7 +16,7 @@ RUN go mod download
 
 COPY . .
 # Copy compiled frontend into internal/dashboard/web/dist
-COPY --from=frontend-builder /src/internal/dashboard/web/dist ./internal/dashboard/web/dist
+COPY --from=frontend-builder /app/internal/dashboard/web/dist ./internal/dashboard/web/dist
 
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /bin/gluetun-dashboard ./cmd/gluetun-dashboard
 

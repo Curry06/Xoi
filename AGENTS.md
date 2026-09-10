@@ -1,3 +1,117 @@
+# Project Overview
+
+This repository is a Gluetun fork with an unprivileged React/Go dashboard and
+a Caddy-based public-application control plane. Read `docs/README.md` before
+architecture work. Confidence-tagged canonical documentation lives in `docs/`.
+
+# Project Purpose
+
+Gluetun owns VPN/firewall/routing/DNS/port-forward data-plane behavior.
+Dashboard owns management API, UI, JSON operator data, and dynamic Caddy routes.
+
+# Current Architecture
+
+Two binaries: `cmd/gluetun` is privileged; `cmd/gluetun-dashboard` is separate
+and uses Gluetun's private HTTP control API. Caddy and exposed apps share the
+Gluetun namespace; dashboard does not.
+
+# Technology Stack
+
+Go 1.26, React 19, TypeScript, Vite, Docker Compose, Caddy 2, Proton NAT-PMP.
+
+# Repository Structure
+
+See `docs/reference/repository-map.md` for runtime, tooling, legacy, and asset
+boundaries.
+
+# Important Entry Points
+
+Read `cmd/gluetun/main.go`, `cmd/gluetun-dashboard/main.go`, Dockerfiles, and
+`docker-compose.dashboard.yml` before modifying runtime behavior.
+
+# Backend Architecture
+
+Dashboard API → coordinator/client/stores/proxy manager. Engine API is
+`internal/server`; use the typed dashboard Gluetun client rather than raw calls.
+
+# Frontend Architecture
+
+React SPA source is `web/src`; build output is embedded under
+`internal/dashboard/web/dist`. Some panels are simulation-backed; verify data
+sources before claiming live behavior.
+
+# Database Architecture
+
+No SQL database. Dashboard profiles/history/routes are JSON under data volume.
+
+# Networking Architecture
+
+Never move dashboard into the Gluetun namespace. Caddy/admin/app route changes
+must not alter Gluetun firewall, routing, VPN, or NAT-PMP lifecycle.
+
+# Docker Architecture
+
+Caddy admin uses a private Unix socket; do not publish it. Engine requires
+`NET_ADMIN` and `/dev/net/tun`; dashboard intentionally has neither.
+
+# Important Runtime Flows
+
+Read `docs/flows/startup-flow.md`, `request-flow.md`, `network-flow.md`, and
+`shutdown-flow.md` before changing lifecycle behavior.
+
+# External Dependencies
+
+ProtonVPN, NAT-PMP, Caddy, Docker, public-IP APIs, optional Telegram Bot API.
+
+# Configuration
+
+Use `.env.example` and `docs/reference/configuration.md`; never read, print, or
+commit real `.env` or files under `secrets/`.
+
+# Development Workflow
+
+Use focused tests first, then `go build ./...`, `golangci-lint run`, and
+`go test ./...` where environment permissions permit. Build web with
+`npm --prefix web run build`.
+
+# Build and Deployment
+
+See `docs/architecture/deployment.md`; build dashboard image when embedded web
+assets change.
+
+# Important Design Decisions
+
+Routes persist independently of current public IP/forwarded port; one Caddy
+provider loads the complete route set atomically and reconciles after restart.
+
+# Known Constraints
+
+Public TLS, real Caddy metrics ingestion, multi-user auth, and a dashboard login
+page are not implemented. Legacy Gluetun v0 API remains for compatibility.
+
+# Security Considerations
+
+Keep dashboard authentication enabled, use non-default credentials, restrict
+CORS, keep engine/admin controls private, and preserve route target validation.
+
+# Areas Under Active Development
+
+Dashboard control-plane UI, proxy route management, and Telegram notifications.
+
+# Known Technical Debt
+
+Read `docs/research/technical-debt.md` before extending dashboard behavior.
+
+# Rules for Future AI Agents
+
+- Read this file and relevant `docs/` material before modifying architecture.
+- Verify from source and runtime configuration; never rely on filenames alone.
+- Do not rewrite working VPN, firewall, routing, port-forwarding, or Docker
+  behavior without tracing callers, interfaces, lifecycle, and tests.
+- Update canonical documentation when architecture changes.
+- Never expose secrets or make unrelated refactors in a focused change.
+- Preserve established APIs and deployment compatibility unless explicitly told.
+
 # AGENTS
 
 Guidance for coding agents working in this repository.

@@ -1,95 +1,49 @@
-# Gluetun Control Center Documentation
+# Documentation
 
-Welcome to the **Gluetun Control Center** documentation. This suite of documents details the architecture, API design, security guarantees, setup instructions, and verified engine capabilities of the Gluetun Control Center.
+This is the canonical source-backed documentation set for this checkout.
+Conclusions are classified as **VERIFIED**, **HIGH CONFIDENCE**, **INFERRED**,
+or **UNKNOWN**.
 
----
+## Reading Order
 
-## Documentation Index
+1. [System overview](architecture/system-overview.md)
+2. [Repository map](reference/repository-map.md)
+3. [Startup flow](flows/startup-flow.md)
+4. [Networking](architecture/networking.md)
+5. [API reference](reference/api-reference.md)
+6. [Security review](security/architecture-review.md)
 
-| Document | Description |
-|---|---|
-| **[Current Architecture Baseline](file:///home/vedx/Videos/Gul/docs/CURRENT_ARCHITECTURE.md)** | Technical baseline of Gluetun engine vs custom dashboard, verified symbols, process boundaries, and protocols. |
-| **[Gluetun Integration Boundary](file:///home/vedx/Videos/Gul/docs/GLUETUN_INTEGRATION.md)** | Exact Go interfaces, client adapters, HTTP endpoints, storage sharing, and network isolation between dashboard and engine. |
-| **[Connection Lifecycle Flows](file:///home/vedx/Videos/Gul/docs/CONNECTION_FLOW.md)** | Complete end-to-end call paths for Connect, Disconnect, Reconnect, Server Switching, and NAT-PMP Port Forwarding. |
-| **[UI ↔ Engine Contract](file:///home/vedx/Videos/Gul/docs/UI_ENGINE_CONTRACT.md)** | Specification of application-level data models (`LiveSnapshot`, `Capabilities`, `Profile`), state transitions, locking, and error schemas. |
-| **[Gap Analysis & Roadmap](file:///home/vedx/Videos/Gul/docs/DEVELOPMENT_GAPS.md)** | Inventory of implemented vs partial vs missing features, engine vs application responsibilities, and next development steps. |
-| **[Server Deployment Guide](file:///home/vedx/Videos/Gul/docs/deployment.md)** | Step-by-step production server setup, Docker secrets, provider configuration, SSH tunnels, reverse proxy (Caddy/Nginx), and maintenance. |
-| **[Setup & Quickstart](file:///home/vedx/Videos/Gul/docs/setup.md)** | Step-by-step instructions for running standalone mock mode, local development (Vite + Go), Docker Compose production deployment, and automated test commands. |
-| **[Architecture & Subsystems](file:///home/vedx/Videos/Gul/docs/architecture.md)** | System topology diagram, frontend-backend relationship, State Coordinator, concurrency mutex locks, traffic metrics, and Server-Sent Events (SSE) streaming. |
-| **[Public Applications Audit & Design](file:///home/vedx/Videos/Gul/docs/architecture/public-applications.md)** | Verified Proton ingress path, in-progress reverse-proxy feature audit, security gaps, and focused implementation plan. |
-| **[Safe Management API](file:///home/vedx/Videos/Gul/docs/api.md)** | Full endpoint catalog for `/api/dashboard/*`, request/response JSON schemas, CSRF protection headers, session cookies, and standard error formats. |
-| **[Security & Hardening](file:///home/vedx/Videos/Gul/docs/security.md)** | Threat model, non-root user execution (`1000:1000`), read-only filesystem, dropping Linux capabilities, secret redaction invariants, and port 8000 isolation. |
-| **[Route & Capability Matrix](file:///home/vedx/Videos/Gul/docs/route-capability-matrix.md)** | Verified mapping between Gluetun engine endpoints (`/v1/vpn/*`, `/v1/publicip/*`, `/v1/portforward`, etc.) and dashboard UI capabilities. |
+## Architecture
 
----
+- [Component architecture](architecture/component-architecture.md)
+- [Backend](architecture/backend.md)
+- [Frontend](architecture/frontend.md)
+- [Docker](architecture/docker.md)
+- [Networking](architecture/networking.md)
+- [Persistence](architecture/database.md)
+- [Authentication](architecture/authentication.md)
+- [Deployment](architecture/deployment.md)
+- [Public applications](architecture/public-applications.md)
 
-## Quick Reference Commands
+## Runtime Flows
 
-### Run Standalone Mock Mode (No VPN Required)
-```bash
-GLUETUN_MOCK=true \
-DASHBOARD_AUTH_REQUIRED=false \
-DASHBOARD_HTTP_ADDRESS=127.0.0.1:9090 \
-go run ./cmd/gluetun-dashboard
-```
-Access UI at `http://127.0.0.1:9090`.
+- [Startup](flows/startup-flow.md)
+- [Requests and control](flows/request-flow.md)
+- [VPN and ingress traffic](flows/network-flow.md)
+- [Shutdown](flows/shutdown-flow.md)
 
-### Run Production Stack with Docker Compose
-```bash
-# 1. Provide secrets
-mkdir -p secrets
-echo "YOUR_WIREGUARD_KEY" > secrets/wireguard_private_key.txt
-echo "admin_password" > secrets/dashboard_admin_password.txt
+## Reference
 
-# 2. Launch stack
-docker compose -f docker-compose.dashboard.yml up -d --build
-```
+- [API contracts](reference/api-reference.md)
+- [Configuration](reference/configuration.md)
+- [Repository map](reference/repository-map.md)
+- [Dependencies](reference/dependencies.md)
 
-### Run Tests & Verification
-```bash
-# Go backend tests (all packages)
-go test -v ./internal/dashboard/...
+## Research
 
-# Frontend tests & type-checking
-npm --prefix web test
-npm --prefix web run lint
+- [Evidence log](research/codebase-findings.md)
+- [Technical debt](research/technical-debt.md)
+- [Open questions](research/open-questions.md)
 
-# Frontend production build (outputs to embedded dist)
-npm --prefix web run build
-```
-
----
-
-## Project Structure
-
-```text
-Gul/
-├── cmd/
-│   └── gluetun-dashboard/      # Go entrypoint, env loading, signal handling
-├── internal/
-│   └── dashboard/
-│       ├── api/                # REST endpoints, error models, CSRF middleware
-│       ├── auth/               # Session store, cookie/bearer auth
-│       ├── gluetun/            # Engine client adapter (RealClient & MockClient)
-│       ├── history/            # Audit trail & IP/port history persistence
-│       ├── profiles/           # Safe user profiles persistence
-│       ├── redaction/          # Automated regex & key secret sanitization
-│       ├── state/              # Coordinator, mutex locks, telemetry, SSE stream
-│       └── web/                # Go embed.FS wrapper serving frontend assets
-├── web/
-│   ├── src/
-│   │   ├── api/                # TypeScript API client & error mapping
-│   │   ├── components/         # Modals, Toast, QR code, Traffic charts
-│   │   ├── hooks/              # useLiveState (SSE + 5s polling fallback)
-│   │   ├── layouts/            # DashboardLayout (Sidebar, navigation, badges)
-│   │   ├── pages/              # Overview, Servers, PortForwarding, Network,
-│   │   │                       # Profiles, Activity, Settings
-│   │   ├── styles/             # Dark glassmorphism design system
-│   │   ├── types/              # Unified TypeScript interfaces
-│   │   └── utils/              # Pure formatting helpers (bytes, rate, uptime)
-│   └── __tests__/              # Node 24 native TypeScript unit tests
-├── Dockerfile.dashboard        # Multi-stage hardened production container
-├── docker-compose.dashboard.yml# Production deployment stack
-├── .env.example                # Configuration template
-└── docs/                       # Comprehensive documentation suite
-```
+Root-level architecture documents predate the current Caddy integration. Use
+the documents linked here if they conflict with older material.

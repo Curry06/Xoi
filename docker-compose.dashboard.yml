@@ -113,7 +113,7 @@ services:
     # Runs directly inside Gluetun's network namespace:
     # Receives redirected VPN traffic on port 8080 and proxies to local apps (:3001, :3002, etc.)
     network_mode: "service:gluetun"
-    command: ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
     volumes:
       - caddy-data:/data
       - caddy-config:/config

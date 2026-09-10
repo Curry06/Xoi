@@ -25,9 +25,9 @@ The repository contains two distinct server-side subsystems:
 |         │ HTTP / SSE (127.0.0.1:9090)                                                   |
 |         ▼                                                                               |
 |  +-----------------------------------------------------------------------------------+  |
-|  | Gluetun Control Center (cmd/gluetun-dashboard)                                     |  |
+|  | Gluetun Control Center (cmd/gluetun-dashboard)                                    |  |
 |  |                                                                                   |  |
-|  |  [Embedded React 19 SPA] ── go:embed ──► [HTTP Handler (web/embed.go)]           |  |
+|  |  [Embedded React 19 SPA] ── go:embed ──► [HTTP Handler (web/embed.go)]            |  |
 |  |                                                                                   |  |
 |  |  [API Router (api/router.go)]                                                     |  |
 |  |         ├── [Auth & CSRF Middleware (auth/auth.go)]                               |  |

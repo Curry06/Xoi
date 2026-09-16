@@ -1,138 +1,173 @@
-# Gluetun VPN client
+# Xoi
 
-Lightweight swiss-army-knife-like VPN client to multiple VPN service providers
+> **Enhanced Gluetun VPN client with an unprivileged React/Go management dashboard and dynamic Caddy reverse-proxy ingress control plane.**
 
-⚠️ This and [gluetun-wiki](https://github.com/qdm12/gluetun-wiki) are the only websites for Gluetun, other websites claiming to be official are scams ⚠️
+Maintained by [Curry06](https://github.com/Curry06/Xoi) • Forked from [Gluetun](https://github.com/qdm12/gluetun)
 
-🗯️ this repository will be migrated to [github.com/passteque/gluetun](https://github.com/passteque/gluetun) on 2026-05-21, which is a Github organization under my sole control, so don't get alarmed if you get redirected in the coming days 😉 Reason being migrating Github sponsors to the Open source collective due to my personal situation, basically annoying paperwork. On the plus side, it will be more transparent and funds donated will only be used for the project. The Docker image names will remain the same.
-
-![Title image](https://raw.githubusercontent.com/passteque/gluetun/master/title.svg)
-
-[![Build status](https://github.com/passteque/gluetun/actions/workflows/ci.yml/badge.svg)](https://github.com/passteque/gluetun/actions/workflows/ci.yml)
-
-[![Docker pulls qmcgaw/gluetun](https://img.shields.io/docker/pulls/qmcgaw/gluetun.svg)](https://hub.docker.com/r/qmcgaw/gluetun)
-[![Docker pulls qmcgaw/private-internet-access](https://img.shields.io/docker/pulls/qmcgaw/private-internet-access.svg)](https://hub.docker.com/r/qmcgaw/gluetun)
-
-[![Docker stars qmcgaw/gluetun](https://img.shields.io/docker/stars/qmcgaw/gluetun.svg)](https://hub.docker.com/r/qmcgaw/gluetun)
-[![Docker stars qmcgaw/private-internet-access](https://img.shields.io/docker/stars/qmcgaw/private-internet-access.svg)](https://hub.docker.com/r/qmcgaw/gluetun)
-
-![Last release](https://img.shields.io/github/release/passteque/gluetun?label=Last%20release)
-![Last Docker tag](https://img.shields.io/docker/v/qmcgaw/gluetun?sort=semver&label=Last%20Docker%20tag)
-[![Last release size](https://img.shields.io/docker/image-size/qmcgaw/gluetun?sort=semver&label=Last%20released%20image)](https://hub.docker.com/r/qmcgaw/gluetun/tags?page=1&ordering=last_updated)
-![GitHub last release date](https://img.shields.io/github/release-date/passteque/gluetun?label=Last%20release%20date)
-![Commits since release](https://img.shields.io/github/commits-since/passteque/gluetun/latest?sort=semver)
-
-[![Latest size](https://img.shields.io/docker/image-size/qmcgaw/gluetun/latest?label=Latest%20image)](https://hub.docker.com/r/qmcgaw/gluetun/tags)
-
-[![GitHub last commit](https://img.shields.io/github/last-commit/passteque/gluetun.svg)](https://github.com/passteque/gluetun/commits/master)
-[![GitHub commit activity](https://img.shields.io/github/commit-activity/y/passteque/gluetun.svg)](https://github.com/passteque/gluetun/graphs/contributors)
-[![GitHub closed PRs](https://img.shields.io/github/issues-pr-closed/passteque/gluetun.svg)](https://github.com/passteque/gluetun/pulls?q=is%3Apr+is%3Aclosed)
-[![GitHub issues](https://img.shields.io/github/issues/passteque/gluetun.svg)](https://github.com/passteque/gluetun/issues)
-[![GitHub closed issues](https://img.shields.io/github/issues-closed/passteque/gluetun.svg)](https://github.com/passteque/gluetun/issues?q=is%3Aissue+is%3Aclosed)
-
-![Code size](https://img.shields.io/github/languages/code-size/passteque/gluetun)
-![GitHub repo size](https://img.shields.io/github/repo-size/passteque/gluetun)
-![Go version](https://img.shields.io/github/go-mod/go-version/passteque/gluetun)
-
-![Visitors count](https://visitor-badge.laobi.icu/badge?page_id=gluetun.readme)
-
-## Quick links
-
-- [Setup](#setup)
-- [Features](#features)
-- Problem?
-  - Check the Wiki [common errors](https://github.com/qdm12/gluetun-wiki/tree/main/errors) and [faq](https://github.com/qdm12/gluetun-wiki/tree/main/faq)
-  - [Start a discussion](https://github.com/passteque/gluetun/discussions)
-  - [Fix the Unraid template](https://github.com/passteque/gluetun/discussions/550)
-- Suggestion?
-  - [Create an issue](https://github.com/passteque/gluetun/issues)
-- Happy?
-  - Sponsor me on [github.com/sponsors/qdm12](https://github.com/sponsors/qdm12)
-  - Donate to [paypal.me/qmcgaw](https://www.paypal.me/qmcgaw)
-  - Drop me [an email](mailto:quentin.mcgaw@gmail.com)
-- **Want to add a VPN provider?** check [the development page](https://github.com/qdm12/gluetun-wiki/blob/main/contributing/development.md) and [add a provider page](https://github.com/qdm12/gluetun-wiki/blob/main/contributing/add-a-provider.md)
-- Video:
-
-  [![Video Gif](https://i.imgur.com/CetWunc.gif)](https://youtu.be/0F6I03LQcI4)
-
-- [Substack Console interview](https://console.substack.com/p/console-72)
-
-## Features
-
-- Based on Alpine 3.23 for a small Docker image of 43.1MB
-- Supports: **AirVPN**, **Cyberghost**, **ExpressVPN**, **FastestVPN**, **Giganews**, **HideMyAss**, **IPVanish**, **IVPN**, **Mullvad** (Wireguard only), **NordVPN**, **Privado**, **Private Internet Access**, **PrivateVPN**, **ProtonVPN**, **PureVPN**,  **SlickVPN**, **Surfshark**, **TorGuard**, **VPNSecure.me**, **VPNUnlimited**, **Vyprvpn**, **Windscribe** servers
-- Supports OpenVPN for all providers listed
-- Supports Wireguard both kernelspace and userspace
-  - For **AirVPN**, **FastestVPN**, **Ivpn**, **Mullvad**, **NordVPN**, **ProtonVPN**, **Surfshark** and **Windscribe**
-  - For **Cyberghost**, **Private Internet Access**, **PrivateVPN**, **PureVPN**, **Torguard**, **VPN Unlimited** and **VyprVPN** using [the custom provider](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/custom.md)
-  - For custom Wireguard configurations using [the custom provider](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/custom.md)
-  - More in progress, see [#134](https://github.com/passteque/gluetun/issues/134)
-- Supports AmneziaWG only with the custom provider for now
-- DNS over TLS baked in with service provider(s) of your choice
-- DNS fine blocking of malicious/ads hostnames and IP addresses, with live update every 24 hours
-- Choose the vpn network protocol, `udp` or `tcp`
-- Built in firewall kill switch to allow traffic only with needed the VPN servers and LAN devices
-- Built in Shadowsocks proxy server (protocol based on SOCKS5 with an encryption layer, tunnels TCP+UDP)
-- Built in Socks5 proxy server (tunnels TCP+UDP) - partial credits to @angelakis and @adjscent
-- Built in HTTP proxy (tunnels HTTP and HTTPS through TCP)
-- [Connect other containers to it](https://github.com/qdm12/gluetun-wiki/blob/main/setup/connect-a-container-to-gluetun.md)
-- [Connect LAN devices to it](https://github.com/qdm12/gluetun-wiki/blob/main/setup/connect-a-lan-device-to-gluetun.md)
-- Compatible with amd64, i686 (32 bit), **ARM** 64 bit, ARM 32 bit v6 and v7, and even ppc64le 🎆
-- Custom VPN server side port forwarding for [Private Internet Access](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/private-internet-access.md#vpn-server-port-forwarding), [PrivateVPN](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/privatevpn.md#vpn-server-port-forwarding) and [ProtonVPN](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/protonvpn.md#vpn-server-port-forwarding)
-- Possibility of split horizon DNS by selecting multiple DNS over TLS providers
-- Can work as a Kubernetes sidecar container, thanks @rorph
-
-## Setup
-
-🎉 There are now instructions specific to each VPN provider with examples to help you get started as quickly as possible!
-
-Go to the [Wiki](https://github.com/qdm12/gluetun-wiki)!
-
-[🐛 Found a bug in the Wiki?!](https://github.com/qdm12/gluetun-wiki/issues/new/choose)
-
-Here's a docker-compose.yml for the laziest:
-
-```yml
 ---
+
+## Fork Attribution & Acknowledgements
+
+**Xoi** is built as a fork of the open-source **[Gluetun](https://github.com/qdm12/gluetun)** project created by **Quentin McGaw** ([@qdm12](https://github.com/qdm12) / [passteque](https://github.com/passteque)) and its many contributors.
+
+- **Upstream Repository:** [github.com/qdm12/gluetun](https://github.com/qdm12/gluetun) / [github.com/passteque/gluetun](https://github.com/passteque/gluetun)
+- **Upstream Documentation & Wiki:** [github.com/qdm12/gluetun-wiki](https://github.com/qdm12/gluetun-wiki)
+
+Huge gratitude and appreciation go to Quentin McGaw and the entire Gluetun community for creating and maintaining the rock-solid, multi-provider VPN engine, firewall kill-switch, DNS-over-TLS, and port-forwarding data plane that powers this project.
+
+---
+
+## What Xoi Adds
+
+While upstream Gluetun focuses on being a lightweight, headless VPN container client, **Xoi** introduces a full management and application exposure suite:
+
+1. **Unprivileged Web Dashboard & Control Plane (`cmd/gluetun-dashboard`)**:
+   - Built with **Go 1.26** and an embedded **React 19** SPA (TypeScript + Vite + Tailwind CSS).
+   - Serves an interactive Web UI on port `9090` without needing `NET_ADMIN` or raw network capabilities.
+   - Real-time status monitoring for VPN connections, public IP lookups, open ports, and health status.
+   - Server profile switching and persistent connection history stored locally as JSON in `/data`.
+
+2. **Dynamic Ingress & Public Applications (Caddy 2)**:
+   - Seamlessly host web services behind dynamic VPN port-forwarding leases (e.g., ProtonVPN NAT-PMP).
+   - Ingress traffic is automatically routed via a shared-namespace **Caddy 2** reverse proxy.
+   - Atomic route management: validate, apply via private Unix socket, and auto-rollback on failure.
+   - Domain and path-based routing directly to target containers.
+
+3. **Event Alerts**:
+   - Integrated Telegram bot notifications for tunnel state, IP address changes, and port-forward lease updates.
+
+4. **Hardened Multi-Binary Architecture**:
+   - Strict privilege boundary: the privileged engine (`cmd/gluetun`) is completely isolated from the unprivileged dashboard (`cmd/gluetun-dashboard`).
+
+---
+
+## Core Engine Features
+
+Xoi inherits all of Gluetun's networking and VPN capabilities:
+
+- **Supported VPN Providers**: AirVPN, Cyberghost, ExpressVPN, FastestVPN, Giganews, HideMyAss, IPVanish, IVPN, Mullvad, NordVPN, Privado, Private Internet Access (PIA), PrivateVPN, ProtonVPN, PureVPN, SlickVPN, Surfshark, TorGuard, VPNSecure.me, VPNUnlimited, Vyprvpn, Windscribe, and Custom configurations.
+- **Protocols**: OpenVPN, WireGuard (kernelspace & userspace), and AmneziaWG.
+- **Built-in Firewall Killswitch**: Blocks traffic leaks when VPN tunnels drop.
+- **DNS Security**: DNS-over-TLS (DoT) with optional ad/malware domain blocking and 24-hour live updates.
+- **Built-in Proxies**: HTTP proxy, SOCKS5 proxy, and Shadowsocks proxy.
+- **Dynamic Port Forwarding**: Provider-side port forwarding support for ProtonVPN (NAT-PMP), PIA, and PrivateVPN.
+- **Multi-Architecture**: amd64, ARM64, ARM 32-bit v6/v7, and ppc64le.
+
+---
+
+## Architecture Overview
+
+```mermaid
+flowchart LR
+  Browser -->|Port 9090| Dashboard["Dashboard Control Plane<br/>(cmd/gluetun-dashboard)"]
+  Dashboard -->|Private Bridge :8000| Engine["Gluetun Engine<br/>(cmd/gluetun)"]
+  Dashboard -->|Unix Socket| CaddyAdmin["Caddy Admin API"]
+  Engine --> Tunnel["VPN Tunnel (OpenVPN / WireGuard / AmneziaWG)"]
+  Tunnel --> Provider["VPN Provider (e.g. ProtonVPN)"]
+  Provider --> Internet
+  Caddy["Caddy Reverse Proxy (:8080)"] --> Apps["Internal Routed Apps (e.g. :3001, :3002)"]
+  Engine -. Forwarded Port (DNAT) .-> Caddy
+  CaddyAdmin -. Dynamic Config .-> Caddy
+```
+
+---
+
+## Quick Setup
+
+Run the full stack (Engine, Dashboard, and Caddy reverse proxy) using Docker Compose:
+
+```bash
+docker compose -f docker-compose.dashboard.yml up -d
+```
+
+### Example `docker-compose.dashboard.yml` Configuration
+
+```yaml
 services:
+  # 1. Privileged VPN Engine
   gluetun:
-    image: qmcgaw/gluetun
-    # container_name: gluetun
-    # line above must be uncommented to allow external containers to connect.
-    # See https://github.com/qdm12/gluetun-wiki/blob/main/setup/connect-a-container-to-gluetun.md#external-container-to-gluetun
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun-engine
+    restart: unless-stopped
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    ports:
-      - 8888:8888/tcp # HTTP proxy
-      - 8388:8388/tcp # Shadowsocks
-      - 8388:8388/udp # Shadowsocks
-    volumes:
-      - /yourpath:/gluetun
     environment:
-      # See https://github.com/qdm12/gluetun-wiki/tree/main/setup#setup
-      - VPN_SERVICE_PROVIDER=ivpn
+      - VPN_SERVICE_PROVIDER=protonvpn
       - VPN_TYPE=openvpn
-      # OpenVPN:
-      - OPENVPN_USER=
-      - OPENVPN_PASSWORD=
-      # Wireguard:
-      # - WIREGUARD_PRIVATE_KEY=wOEI9rqqbDwnN8/Bpp22sVz48T71vJ4fYmFWujulwUU=
-      # - WIREGUARD_ADDRESSES=10.64.222.21/32
-      # Timezone for accurate log times
-      - TZ=
-      # Server list updater
-      # See https://github.com/qdm12/gluetun-wiki/blob/main/setup/servers.md#update-the-vpn-servers-list
-      - UPDATER_PERIOD=
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - VPN_PORT_FORWARDING=on
+      - VPN_PORT_FORWARDING_PROVIDER=protonvpn
+      - VPN_PORT_FORWARDING_LISTENING_PORTS=8080
+      - HTTP_CONTROL_SERVER_ADDRESS=0.0.0.0:8000
+    networks:
+      - vpn-management
+
+  # 2. Unprivileged Control Center Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: gluetun-control-center
+    restart: unless-stopped
+    depends_on:
+      - gluetun
+    networks:
+      - vpn-management
+    ports:
+      - "127.0.0.1:9090:9090"
+    environment:
+      - DASHBOARD_HTTP_ADDRESS=0.0.0.0:9090
+      - DASHBOARD_AUTH_REQUIRED=true
+      - DASHBOARD_ADMIN_USERNAME=admin
+      - DASHBOARD_ADMIN_PASSWORD=admin123
+      - DASHBOARD_DATA_DIR=/data
+      - GLUETUN_CONTROL_URL=http://gluetun:8000
+      - CADDY_ADMIN_URL=unix:///run/caddy/admin.sock
+      - CADDY_INGRESS_URL=http://gluetun:8080
+    volumes:
+      - dashboard-data:/data
+      - caddy-admin:/run/caddy
+
+  # 3. Dynamic Reverse Proxy (Caddy)
+  caddy:
+    image: caddy:2.9-alpine
+    container_name: gluetun-reverse-proxy
+    restart: unless-stopped
+    depends_on:
+      - gluetun
+    network_mode: "service:gluetun"
+    volumes:
+      - caddy-admin:/run/caddy
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+
+networks:
+  vpn-management:
+    driver: bridge
+
+volumes:
+  dashboard-data:
+  caddy-admin:
 ```
 
-🆕 Image also available as `ghcr.io/qdm12/gluetun`
+Once running, access the dashboard at `http://localhost:9090` (default login: `admin` / `admin123`).
 
-## Fun graphs
+---
 
-[![Star History Chart](https://star-history.dera.page/svg?repos=passteque/gluetun&type=date&legend=top-left)](https://star-history.dera.page/#passteque/gluetun&type=date&legend=top-left)
+## Documentation
+
+Detailed architectural and developer documentation is located in [`docs/`](docs/README.md):
+
+- [System Overview](docs/architecture/system-overview.md)
+- [Public Applications & Caddy Proxy](docs/architecture/public-applications.md)
+- [Component Architecture](docs/architecture/component-architecture.md)
+- [Networking & Firewall Design](docs/architecture/networking.md)
+- [API Reference](docs/reference/api-reference.md)
+
+---
 
 ## License
 
-[![MIT](https://img.shields.io/github/license/passteque/gluetun)](https://github.com/passteque/gluetun/blob/master/LICENSE)
+This project is licensed under the [MIT License](LICENSE), consistent with upstream Gluetun.
